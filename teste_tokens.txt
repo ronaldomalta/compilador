@@ -1,0 +1,14 @@
+program TesteLexer;
+var
+   x, y : integer;
+   val : real;
+   ch : char;
+begin
+   x := 42 + 10 - 5 * 2 / 1;
+   val := 3.1415;
+   ch := 'a';
+   if (x <= 100) and (y >= 50) or (x <> y) then
+      x := x div 2;
+   if not (x = y) then write(x);
+   @ # $
+end.

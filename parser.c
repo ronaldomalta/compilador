@@ -22,11 +22,15 @@ static void tipo(Parser *p);
 static void cmd_comp(Parser *p);
 static void comandos(Parser *p);
 static void comando(Parser *p);
-static void atrib(Parser *p);
 static void expr(Parser *p);
 static void expr_simples(Parser *p);
 static void termo(Parser *p);
 static void fator(Parser *p);
+
+static void atribuicao(Parser *p);
+static void decisao(Parser *p);
+static void iteracao(Parser *p);
+static void escrita(Parser *p);
 
 static void programa(Parser *p) {
     consumir(p, TK_PROGRAM, "Esperado 'program'");
@@ -80,35 +84,61 @@ static void comandos(Parser *p) {
 
 static void comando(Parser *p) {
     switch (p->token.tipo) {
-        case TK_IDENTIFICADOR: atrib(p); break;
-        case TK_IF:
-            avancar(p); expr(p);
-            consumir(p, TK_THEN, "Esperado 'then'"); comando(p);
-            if (p->token.tipo == TK_ELSE) { avancar(p); comando(p); }
-            break;
+        case TK_IDENTIFICADOR: atribuicao(p); break;
+        case TK_IF:             decisao(p);   break;
         case TK_WHILE:
-            avancar(p); expr(p);
-            consumir(p, TK_DO, "Esperado 'do'"); comando(p);
-            break;
-        case TK_REPEAT:
-            avancar(p); comandos(p);
-            consumir(p, TK_UNTIL, "Esperado 'until'"); expr(p);
-            break;
-        case TK_WRITE:
-            avancar(p); consumir(p, TK_ABRE_PAR, "Esperado '('");
-            expr(p);
-            while (p->token.tipo == TK_VIRGULA) { avancar(p); expr(p); }
-            consumir(p, TK_FECHA_PAR, "Esperado ')'");
-            break;
-        case TK_BEGIN: cmd_comp(p); break;
+        case TK_REPEAT:         iteracao(p);  break;
+        case TK_WRITE:          escrita(p);   break;
+        case TK_BEGIN:          cmd_comp(p);  break;
         default: break;
     }
 }
 
-static void atrib(Parser *p) {
+static void atribuicao(Parser *p) {
     consumir(p, TK_IDENTIFICADOR, "Esperado identificador");
     consumir(p, TK_ATRIBUICAO, "Esperado ':='");
     expr(p);
+}
+
+static void decisao(Parser *p) {
+    consumir(p, TK_IF, "Esperado 'if'");
+    expr(p);
+    consumir(p, TK_THEN, "Esperado 'then'");
+    comando(p);
+
+    if (p->token.tipo == TK_ELSE) {
+        avancar(p);
+        comando(p);
+    }
+}
+
+static void iteracao(Parser *p) {
+    if (p->token.tipo == TK_WHILE) {
+        avancar(p);
+        expr(p);
+        consumir(p, TK_DO, "Esperado 'do'");
+        comando(p);
+    } else if (p->token.tipo == TK_REPEAT) {
+        avancar(p);
+        comandos(p);
+        consumir(p, TK_UNTIL, "Esperado 'until'");
+        expr(p);
+    } else {
+        erro(p, "Esperado 'while' ou 'repeat'");
+    }
+}
+
+static void escrita(Parser *p) {
+    consumir(p, TK_WRITE, "Esperado 'write'");
+    consumir(p, TK_ABRE_PAR, "Esperado '('");
+    expr(p);
+
+    while (p->token.tipo == TK_VIRGULA) {
+        avancar(p);
+        expr(p);
+    }
+
+    consumir(p, TK_FECHA_PAR, "Esperado ')'");
 }
 
 static void expr(Parser *p) {

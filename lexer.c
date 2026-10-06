@@ -107,18 +107,27 @@ static Token ler_numero(Lexer *lx) {
     int i = 0;
 
     while (isdigit((unsigned char)atual(lx))) {
-        if (i < MAX_LEXEMA - 1) t.lexema[i++] = avancar(lx);
-        else avancar(lx);
+        if (i < MAX_LEXEMA - 1)
+            t.lexema[i++] = avancar(lx);
+        else
+            avancar(lx);
     }
 
-    
-    if (atual(lx) == '.' && isdigit((unsigned char)lx->fonte[lx->pos + 1])) {
+    if (atual(lx) == '.' &&
+        isdigit((unsigned char)lx->fonte[lx->pos + 1])) {
+
         t.tipo = TK_REAL_LITERAL;
-        if (i < MAX_LEXEMA - 1) t.lexema[i++] = avancar(lx); // Consome o '.'
+
+        if (i < MAX_LEXEMA - 1)
+            t.lexema[i++] = avancar(lx);
+        else
+            avancar(lx);
 
         while (isdigit((unsigned char)atual(lx))) {
-            if (i < MAX_LEXEMA - 1) t.lexema[i++] = avancar(lx);
-            else avancar(lx);
+            if (i < MAX_LEXEMA - 1)
+                t.lexema[i++] = avancar(lx);
+            else
+                avancar(lx);
         }
     }
 
@@ -126,28 +135,51 @@ static Token ler_numero(Lexer *lx) {
     return t;
 }
 
-
 static Token ler_caractere(Lexer *lx) {
     Token t = {TK_CHAR_LITERAL, "", lx->linha, lx->coluna};
     int i = 0;
 
-    t.lexema[i++] = avancar(lx); 
+    // Consome a aspa inicial '
+    t.lexema[i++] = avancar(lx);
 
-    if (atual(lx) != '\'' && atual(lx) != '\0') {
-        if (i < MAX_LEXEMA - 1) t.lexema[i++] = avancar(lx);
+    // Trata \n e \t
+    if (atual(lx) == '\\') {
+        if (i < MAX_LEXEMA - 1)
+            t.lexema[i++] = avancar(lx);
+
+        if (atual(lx) == 'n' || atual(lx) == 't') {
+            if (i < MAX_LEXEMA - 1)
+                t.lexema[i++] = avancar(lx);
+        } else {
+            printf("Erro léxico no caracter [%c]\n", atual(lx));
+            exit(1);
+        }
     }
 
+    // Trata letra ou dígito
+    else if (isalnum((unsigned char)atual(lx)) || atual(lx) == '_') {
+        if (i < MAX_LEXEMA - 1)
+            t.lexema[i++] = avancar(lx);
+    }
+
+    // Qualquer outro caractere é inválido
+    else {
+        printf("Erro léxico no caracter [%c]\n", atual(lx));
+        exit(1);
+    }
+
+    // Verifica a aspa final '
     if (atual(lx) == '\'') {
-        if (i < MAX_LEXEMA - 1) t.lexema[i++] = avancar(lx); // Consome aspas simples de fechamento
+        if (i < MAX_LEXEMA - 1)
+            t.lexema[i++] = avancar(lx);
     } else {
         printf("Erro léxico no caracter [%c]\n", atual(lx));
-        t.tipo = TK_ERRO;
+        exit(1);
     }
 
     t.lexema[i] = '\0';
     return t;
 }
-
 
 Token lexer_proximo_token(Lexer *lx) {
     
@@ -167,8 +199,9 @@ Token lexer_proximo_token(Lexer *lx) {
     if (isalpha((unsigned char)c) || c == '_')
         return ler_identificador(lx);
 
-    if (isdigit((unsigned char)c))
-        return ler_numero(lx);
+    if (isdigit((unsigned char)c) ||
+    (c == '.' && isdigit((unsigned char)lx->fonte[lx->pos + 1])))
+    return ler_numero(lx);
 
     if (c == '\'')
         return ler_caractere(lx);
@@ -231,13 +264,9 @@ Token lexer_proximo_token(Lexer *lx) {
             avancar(lx);
             return (Token){TK_PONTO, ".", linha, coluna};
 
-        default:
-            
-            c = avancar(lx);
-            printf("Erro léxico no caracter [%c]\n", c);
-            Token t = {TK_ERRO, "", linha, coluna};
-            t.lexema[0] = c;
-            t.lexema[1] = '\0';
-            return t;
+       default:
+    c = avancar(lx);
+    printf("Erro léxico no caracter [%c]\n", c);
+    exit(1);
     }
 }

@@ -3,7 +3,8 @@
 #include "parser.h"
 
 static void erro(Parser *p, const char *msg) {
-    printf("Erro Sintatico [%d:%d]: %s ('%s')\n", p->token.linha, p->token.coluna, msg, p->token.lexema);
+    (void)msg;
+    printf("Erro de sintaxe no token [%s]\n", p->token.lexema);
     exit(1);
 }
 
@@ -23,9 +24,11 @@ static void cmd_comp(Parser *p);
 static void comandos(Parser *p);
 static void comando(Parser *p);
 static void expr(Parser *p);
-static void expr_simples(Parser *p);
-static void termo(Parser *p);
-static void fator(Parser *p);
+static void expr_logica(Parser *p);
+static void expr_relacional(Parser *p);
+static void expr_aditiva(Parser *p);
+static void expr_multiplicativa(Parser *p);
+static void expr_basica(Parser *p);
 
 static void atribuicao(Parser *p);
 static void decisao(Parser *p);
@@ -41,7 +44,7 @@ static void programa(Parser *p) {
 }
 
 static void bloco(Parser *p) {
-    if (p->token.tipo == TK_VAR) decl_var(p);
+    decl_var(p);
     cmd_comp(p);
 }
 
@@ -75,29 +78,50 @@ static void cmd_comp(Parser *p) {
 }
 
 static void comandos(Parser *p) {
-    comando(p);
-    while (p->token.tipo == TK_PONTO_VIRGULA) {
-        avancar(p);
-        if (p->token.tipo != TK_END && p->token.tipo != TK_UNTIL) comando(p);
+    while (p->token.tipo == TK_BEGIN ||
+           p->token.tipo == TK_IDENTIFICADOR ||
+           p->token.tipo == TK_WHILE ||
+           p->token.tipo == TK_REPEAT ||
+           p->token.tipo == TK_IF ||
+           p->token.tipo == TK_WRITE) {
+
+        comando(p);
     }
 }
-
 static void comando(Parser *p) {
     switch (p->token.tipo) {
-        case TK_IDENTIFICADOR: atribuicao(p); break;
-        case TK_IF:             decisao(p);   break;
+
+        case TK_BEGIN:
+            cmd_comp(p);
+            consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
+            break;
+
+        case TK_IDENTIFICADOR:
+            atribuicao(p);
+            break;
+
         case TK_WHILE:
-        case TK_REPEAT:         iteracao(p);  break;
-        case TK_WRITE:          escrita(p);   break;
-        case TK_BEGIN:          cmd_comp(p);  break;
-        default: break;
+        case TK_REPEAT:
+            iteracao(p);
+            break;
+
+        case TK_IF:
+            decisao(p);
+            break;
+
+        case TK_WRITE:
+            escrita(p);
+            break;
+
+        default:
+            erro(p, "Comando invalido");
     }
 }
-
 static void atribuicao(Parser *p) {
     consumir(p, TK_IDENTIFICADOR, "Esperado identificador");
     consumir(p, TK_ATRIBUICAO, "Esperado ':='");
     expr(p);
+    consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
 }
 
 static void decisao(Parser *p) {
@@ -111,18 +135,20 @@ static void decisao(Parser *p) {
         comando(p);
     }
 }
-
 static void iteracao(Parser *p) {
     if (p->token.tipo == TK_WHILE) {
         avancar(p);
         expr(p);
         consumir(p, TK_DO, "Esperado 'do'");
         comando(p);
+
     } else if (p->token.tipo == TK_REPEAT) {
         avancar(p);
-        comandos(p);
+        comando(p);
         consumir(p, TK_UNTIL, "Esperado 'until'");
         expr(p);
+        consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
+
     } else {
         erro(p, "Esperado 'while' ou 'repeat'");
     }
@@ -132,52 +158,83 @@ static void escrita(Parser *p) {
     consumir(p, TK_WRITE, "Esperado 'write'");
     consumir(p, TK_ABRE_PAR, "Esperado '('");
     expr(p);
-
-    while (p->token.tipo == TK_VIRGULA) {
-        avancar(p);
-        expr(p);
-    }
-
     consumir(p, TK_FECHA_PAR, "Esperado ')'");
+    consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
 }
 
 static void expr(Parser *p) {
-    expr_simples(p);
+    expr_logica(p);
+}
+
+static void expr_logica(Parser *p) {
+    expr_relacional(p);
+
+    while (p->token.tipo == TK_OR || p->token.tipo == TK_AND) {
+        avancar(p);
+        expr_relacional(p);
+    }
+}
+
+static void expr_relacional(Parser *p) {
+    expr_aditiva(p);
+
+    while (p->token.tipo == TK_IGUAL ||
+           p->token.tipo == TK_DIFERENTE ||
+           p->token.tipo == TK_MENOR ||
+           p->token.tipo == TK_MENOR_IGUAL ||
+           p->token.tipo == TK_MAIOR ||
+           p->token.tipo == TK_MAIOR_IGUAL) {
+
+        avancar(p);
+        expr_aditiva(p);
+    }
+}
+
+static void expr_aditiva(Parser *p) {
+    expr_multiplicativa(p);
+
+    while (p->token.tipo == TK_MAIS || p->token.tipo == TK_MENOS) {
+        avancar(p);
+        expr_multiplicativa(p);
+    }
+}
+
+static void expr_multiplicativa(Parser *p) {
+    expr_basica(p);
+
+    while (p->token.tipo == TK_MULT ||
+           p->token.tipo == TK_BARRA ||
+           p->token.tipo == TK_DIV) {
+
+        avancar(p);
+        expr_basica(p);
+    }
+}
+
+static void expr_basica(Parser *p) {
     TokenType t = p->token.tipo;
-    if (t == TK_IGUAL || t == TK_DIFERENTE || t == TK_MENOR || t == TK_MENOR_IGUAL || t == TK_MAIOR || t == TK_MAIOR_IGUAL) {
-        avancar(p);
-        expr_simples(p);
-    }
-}
 
-static void expr_simples(Parser *p) {
-    if (p->token.tipo == TK_MAIS || p->token.tipo == TK_MENOS) avancar(p);
-    termo(p);
-    while (p->token.tipo == TK_MAIS || p->token.tipo == TK_MENOS || p->token.tipo == TK_OR) {
-        avancar(p);
-        termo(p);
-    }
-}
+    if (t == TK_IDENTIFICADOR ||
+        t == TK_INTEIRO_LITERAL ||
+        t == TK_REAL_LITERAL ||
+        t == TK_CHAR_LITERAL) {
 
-static void termo(Parser *p) {
-    fator(p);
-    while (p->token.tipo == TK_MULT || p->token.tipo == TK_BARRA || p->token.tipo == TK_DIV || p->token.tipo == TK_AND) {
         avancar(p);
-        fator(p);
-    }
-}
 
-static void fator(Parser *p) {
-    TokenType t = p->token.tipo;
-    if (t == TK_IDENTIFICADOR || t == TK_INTEIRO_LITERAL || t == TK_REAL_LITERAL || t == TK_CHAR_LITERAL) {
-        avancar(p);
     } else if (t == TK_ABRE_PAR) {
-        avancar(p); expr(p);
+
+        avancar(p);
+        expr(p);
         consumir(p, TK_FECHA_PAR, "Esperado ')'");
+
     } else if (t == TK_NOT) {
-        avancar(p); fator(p);
+
+        avancar(p);
+        expr(p);
+
     } else {
-        erro(p, "Fator invalido");
+
+        erro(p, "Expressao invalida");
     }
 }
 

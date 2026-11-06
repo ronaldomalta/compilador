@@ -183,8 +183,16 @@ static Token ler_caractere(Lexer *lx) {
 
 Token lexer_proximo_token(Lexer *lx) {
     
-    while (atual(lx) == ' ' || atual(lx) == '\t' || atual(lx) == '\r' || atual(lx) == '\n') {
-        avancar(lx);
+    /* Ignora brancos e comentarios de linha (//), que aparecem nos exemplos
+       validos do enunciado. */
+    for (;;) {
+        if (atual(lx) == ' ' || atual(lx) == '\t' || atual(lx) == '\r' || atual(lx) == '\n') {
+            avancar(lx);
+        } else if (atual(lx) == '/' && lx->fonte[lx->pos + 1] == '/') {
+            while (atual(lx) != '\n' && atual(lx) != '\0') avancar(lx);
+        } else {
+            break;
+        }
     }
 
     int linha = lx->linha;

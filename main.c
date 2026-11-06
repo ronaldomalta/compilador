@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include "parser.h"
+#include "ast.h"
 
 int main(int argc, char *argv[]) {
 
@@ -20,10 +21,12 @@ int main(int argc, char *argv[]) {
     Parser parser;
     parser_iniciar(&parser, &lx);
 
-    parser_analisar(&parser);
+    Node *raiz = parser_analisar(&parser);
 
     printf("Programa sintaticamente correto!\n");
+    ast_imprimir(raiz, 0);
 
+    ast_liberar(raiz);
     lexer_liberar(&lx);
 
     return 0;

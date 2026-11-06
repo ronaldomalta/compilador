@@ -2,6 +2,8 @@
 #define PARSER_H
 
 #include "lexer.h"
+#include "ast.h"
+
 typedef struct {
     Lexer *lx;
     Token token;
@@ -10,7 +12,8 @@ typedef struct {
 
 void parser_iniciar(Parser *p, Lexer *lx);
 
-
-int parser_analisar(Parser *p);
+/* Analisa o programa e devolve a raiz da AST (NODE_PROGRAMA).
+   Em caso de erro de sintaxe, mostra a mensagem e encerra com exit(1). */
+Node *parser_analisar(Parser *p);
 
 #endif

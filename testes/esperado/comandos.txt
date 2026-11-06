@@ -1,0 +1,45 @@
+Programa sintaticamente correto!
+Programa Comandos
+  Var x : integer
+  Var y : integer
+  Var r : real
+  Var c : char
+  Bloco 
+    Atribuicao r
+      Real .5
+    Atribuicao c
+      Char '\t'
+    If 
+      Op >
+        Variavel x
+        Inteiro 0
+      If 
+        Op >
+          Variavel y
+          Inteiro 0
+        Write 
+          Variavel x
+        Write 
+          Variavel y
+    Repeat 
+      Bloco 
+        Atribuicao x
+          Op -
+            Variavel x
+            Inteiro 1
+        Atribuicao y
+          Op +
+            Variavel y
+            Inteiro 1
+      Op =
+        Variavel x
+        Inteiro 0
+    While 
+      Op <
+        Variavel x
+        Inteiro 3
+      Atribuicao x
+        Op +
+          Variavel x
+          Inteiro 1
+    Bloco 

@@ -1,4 +1,3 @@
-
 #ifndef TABELA_SIMBOLOS_H
 #define TABELA_SIMBOLOS_H
 
@@ -7,6 +6,7 @@
 #define MAX_SIMBOLOS 100
 
 typedef enum {
+    TIPO_INDEFINIDO,
     TIPO_INTEGER,
     TIPO_REAL,
     TIPO_CHAR,
@@ -39,5 +39,9 @@ int ts_inserir(
 );
 
 Simbolo *ts_buscar(TabelaSimbolos *ts, const char *nome);
+void ts_imprimir(TabelaSimbolos *ts);
+
+TipoDado tipo_do_token(TokenType tk);
+const char *nome_tipo(TipoDado tipo);
 
 #endif

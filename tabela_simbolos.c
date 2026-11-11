@@ -37,6 +37,7 @@ int ts_inserir(TabelaSimbolos *ts, const char *nome, TipoDado tipo, int linha) {
     }
 
     strncpy(ts->simbolos[ts->topo].nome, nome, MAX_LEXEMA - 1);
+    ts->simbolos[ts->topo].nome[MAX_LEXEMA - 1] = '\0';
     ts->simbolos[ts->topo].tipo = tipo;
     ts->simbolos[ts->topo].escopo = ts->escopo_atual;
     ts->simbolos[ts->topo].linha = linha;
@@ -53,4 +54,34 @@ Simbolo* ts_buscar(TabelaSimbolos *ts, const char *nome) {
         }
     }
     return NULL; 
+}
+
+void ts_imprimir(TabelaSimbolos *ts) {
+    for (int i = 0; i < ts->topo; i++) {
+        printf("%s : %s (escopo %d, linha %d)\n",
+               ts->simbolos[i].nome,
+               nome_tipo(ts->simbolos[i].tipo),
+               ts->simbolos[i].escopo,
+               ts->simbolos[i].linha);
+    }
+}
+
+TipoDado tipo_do_token(TokenType tk) {
+    switch (tk) {
+        case TK_INTEGER: return TIPO_INTEGER;
+        case TK_REAL:    return TIPO_REAL;
+        case TK_CHAR:    return TIPO_CHAR;
+        default:         return TIPO_ERRO;
+    }
+}
+
+const char *nome_tipo(TipoDado tipo) {
+    switch (tipo) {
+        case TIPO_INTEGER: return "integer";
+        case TIPO_REAL:    return "real";
+        case TIPO_CHAR:    return "char";
+        case TIPO_BOOLEAN: return "boolean";
+        case TIPO_ERRO:    return "erro";
+        default:           return "indefinido";
+    }
 }

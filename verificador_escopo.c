@@ -12,7 +12,6 @@ void ve_inicializar(VerificadorEscopo *ve, TabelaSimbolos *ts) {
 void ve_entrar_escopo(VerificadorEscopo *ve) { ts_entrar_escopo(ve->ts); }
 void ve_sair_escopo(VerificadorEscopo *ve)   { ts_sair_escopo(ve->ts); }
 
-/* Busca somente no escopo atual (a tabela e uma pilha ordenada por escopo). */
 static Simbolo *buscar_local(VerificadorEscopo *ve, const char *nome) {
     TabelaSimbolos *ts = ve->ts;
     for (int i = ts->topo - 1; i >= 0; i--) {

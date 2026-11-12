@@ -1,0 +1,6 @@
+program T;
+var
+ x : integer;
+begin
+ x := (y + 1) * 2 - 3;
+end.

@@ -1,0 +1,4 @@
+Erro semantico [Linha 7]: Atribuicao incompativel: 'x' e integer, mas a expressao e real.
+Erro semantico [Linha 8]: Atribuicao incompativel: 'c' e char, mas a expressao e integer.
+Erro semantico [Linha 9]: Atribuicao incompativel: 'x' e integer, mas a expressao e real.
+Programa com 3 erro(s) semantico(s).

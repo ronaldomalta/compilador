@@ -1,0 +1,4 @@
+Erro semantico [Linha 6]: A condicao do 'if' deve ser boolean, mas e integer.
+Erro semantico [Linha 7]: A condicao do 'while' deve ser boolean, mas e char.
+Erro semantico [Linha 8]: A condicao do 'repeat' deve ser boolean, mas e integer.
+Programa com 3 erro(s) semantico(s).

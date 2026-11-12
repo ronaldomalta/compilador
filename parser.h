@@ -2,18 +2,28 @@
 #define PARSER_H
 
 #include "lexer.h"
-#include "ast.h"
+#include "tabela_simbolos.h"
+#include "verificador_escopo.h"
+
+/* O parser faz a analise sintatica e, ao mesmo tempo, as verificacoes
+   semanticas (sem AST, como pede a Parte 2):
+     - declaracoes      -> tabela de simbolos + verificador de escopo
+     - expressoes       -> analise_semantica (tipo de cada expressao)
+     - comandos         -> analise_comandos  (atribuicao e condicoes)
+
+   Erro lexico ou sintatico: mostra a mensagem e encerra com exit(1).
+   Erro semantico: mostra a mensagem e continua, para achar todos os erros. */
 
 typedef struct {
     Lexer *lx;
     Token token;
+    TabelaSimbolos ts;
+    VerificadorEscopo ve;
 } Parser;
-
 
 void parser_iniciar(Parser *p, Lexer *lx);
 
-/* Analisa o programa e devolve a raiz da AST (NODE_PROGRAMA).
-   Em caso de erro de sintaxe, mostra a mensagem e encerra com exit(1). */
-Node *parser_analisar(Parser *p);
+/* Analisa o programa inteiro e devolve o total de erros semanticos. */
+int parser_analisar(Parser *p);
 
 #endif

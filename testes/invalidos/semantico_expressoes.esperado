@@ -1,0 +1,7 @@
+Erro semantico [Linha 7]: Operacao '+' invalida entre integer e char.
+Erro semantico [Linha 8]: Operacao 'div' invalida entre real e integer.
+Erro semantico [Linha 9]: Operacao 'and' exige dois boolean, mas recebeu boolean e integer.
+Erro semantico [Linha 10]: Operador 'not' exige boolean, mas recebeu integer.
+Erro semantico [Linha 11]: Menos unario exige integer ou real, mas recebeu char.
+Erro semantico [Linha 12]: Operacao '=' invalida entre char e integer.
+Programa com 6 erro(s) semantico(s).

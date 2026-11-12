@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "parser.h"
+#include "analise_semantica.h"
+#include "analise_comandos.h"
 
 static void erro(Parser *p, const char *msg) {
     (void)msg;
@@ -15,80 +18,64 @@ static void consumir(Parser *p, TokenType t, const char *m) {
     else erro(p, m);
 }
 
-static Node *programa(Parser *p);
-static Node *decl_var(Parser *p);
-static Node *lista_id(Parser *p);
+static void programa(Parser *p);
+static void decl_var(Parser *p);
 static TipoDado tipo(Parser *p);
-static Node *cmd_comp(Parser *p);
-static Node *comandos(Parser *p);
-static Node *comando(Parser *p);
-static Node *atribuicao(Parser *p);
-static Node *decisao(Parser *p);
-static Node *iteracao(Parser *p);
-static Node *escrita(Parser *p);
-static Node *expr(Parser *p);
-static Node *expr_logica(Parser *p);
-static Node *expr_relacional(Parser *p);
-static Node *expr_aditiva(Parser *p);
-static Node *expr_multiplicativa(Parser *p);
-static Node *expr_basica(Parser *p);
+static void cmd_comp(Parser *p);
+static void comandos(Parser *p);
+static void comando(Parser *p);
+static void atribuicao(Parser *p);
+static void decisao(Parser *p);
+static void iteracao(Parser *p);
+static void escrita(Parser *p);
+static TipoDado expr(Parser *p);
+static TipoDado expr_logica(Parser *p);
+static TipoDado expr_relacional(Parser *p);
+static TipoDado expr_aditiva(Parser *p);
+static TipoDado expr_multiplicativa(Parser *p);
+static TipoDado expr_basica(Parser *p);
 
-/* Cria um no de operacao binaria a partir do token do operador (atual) e
-   avanca. Como o laco de cada nivel usa o no anterior como filho esquerdo,
-   a arvore fica associativa a esquerda, como pede o enunciado. */
-static Node *nova_binaria(Parser *p, Node *esq) {
-    Node *op = ast_novo(NODE_BINARIA, p->token.lexema, p->token.linha);
-    avancar(p);
-    op->f1 = esq;
-    return op;
-}
-
-/* PROGRAMA: texto=nome, f1=lista de DECL, f2=BLOCO */
-static Node *programa(Parser *p) {
+static void programa(Parser *p) {
     consumir(p, TK_PROGRAM, "Esperado 'program'");
-
-    Node *prog = ast_novo(NODE_PROGRAMA, p->token.lexema, p->token.linha);
     consumir(p, TK_IDENTIFICADOR, "Esperado nome do programa");
     consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
 
-    prog->f1 = decl_var(p);
-    prog->f2 = cmd_comp(p);
-
+    ve_entrar_escopo(&p->ve);
+    decl_var(p);
+    cmd_comp(p);
     consumir(p, TK_PONTO, "Esperado '.' no fim");
-    return prog;
 }
 
-static Node *decl_var(Parser *p) {
-    Node *lista = NULL;
+/* Guarda os nomes de "a, b, c" ate ler o tipo, e so entao declara cada um.
+   A redeclaracao e detectada pelo verificador de escopo (integrante 2). */
+#define MAX_GRUPO 64
 
+static void decl_var(Parser *p) {
     consumir(p, TK_VAR, "Esperado 'var'");
+
     while (p->token.tipo == TK_IDENTIFICADOR) {
-        Node *grupo = lista_id(p);
+        char nomes[MAX_GRUPO][MAX_LEXEMA];
+        int linhas[MAX_GRUPO];
+        int n = 0;
+
+        for (;;) {
+            if (p->token.tipo == TK_IDENTIFICADOR && n < MAX_GRUPO) {
+                strcpy(nomes[n], p->token.lexema);
+                linhas[n] = p->token.linha;
+                n++;
+            }
+            consumir(p, TK_IDENTIFICADOR, "Esperado identificador");
+            if (p->token.tipo != TK_VIRGULA) break;
+            avancar(p);
+        }
+
         consumir(p, TK_DOIS_PONTOS, "Esperado ':'");
-
         TipoDado t = tipo(p);
-        for (Node *d = grupo; d; d = d->prox) d->tipo = t;
-
         consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
-        lista = ast_anexar(lista, grupo);
-    }
-    return lista;
-}
 
-/* DECL: texto=nome, tipo=tipo declarado. Um no por variavel, mesmo em
-   "a, b : integer;". Declaracoes duplicadas ficam na lista: quem as
-   detecta e a tabela de simbolos. */
-static Node *lista_id(Parser *p) {
-    Node *lista = ast_novo(NODE_DECL, p->token.lexema, p->token.linha);
-    consumir(p, TK_IDENTIFICADOR, "Esperado identificador");
-
-    while (p->token.tipo == TK_VIRGULA) {
-        avancar(p);
-        Node *d = ast_novo(NODE_DECL, p->token.lexema, p->token.linha);
-        consumir(p, TK_IDENTIFICADOR, "Esperado identificador");
-        lista = ast_anexar(lista, d);
+        for (int i = 0; i < n; i++)
+            ve_declarar(&p->ve, nomes[i], t, linhas[i]);
     }
-    return lista;
 }
 
 static TipoDado tipo(Parser *p) {
@@ -104,153 +91,148 @@ static TipoDado tipo(Parser *p) {
     return t;
 }
 
-/* BLOCO: f1=lista de comandos (ligados por prox) */
-static Node *cmd_comp(Parser *p) {
-    Node *bloco = ast_novo(NODE_BLOCO, "", p->token.linha);
-
+static void cmd_comp(Parser *p) {
     consumir(p, TK_BEGIN, "Esperado 'begin'");
-    bloco->f1 = comandos(p);
+    comandos(p);
     consumir(p, TK_END, "Esperado 'end'");
-    return bloco;
 }
 
-static Node *comandos(Parser *p) {
-    Node *lista = NULL;
-
+static void comandos(Parser *p) {
     while (p->token.tipo == TK_BEGIN ||
            p->token.tipo == TK_IDENTIFICADOR ||
            p->token.tipo == TK_WHILE ||
            p->token.tipo == TK_REPEAT ||
            p->token.tipo == TK_IF ||
            p->token.tipo == TK_WRITE) {
-
-        lista = ast_anexar(lista, comando(p));
+        comando(p);
     }
-    return lista;
 }
 
-static Node *comando(Parser *p) {
-    Node *c = NULL;
-
+static void comando(Parser *p) {
     switch (p->token.tipo) {
-
         case TK_BEGIN:
-            c = cmd_comp(p);
+            cmd_comp(p);
             consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
             break;
 
         case TK_IDENTIFICADOR:
-            c = atribuicao(p);
+            atribuicao(p);
             break;
 
         case TK_WHILE:
         case TK_REPEAT:
-            c = iteracao(p);
+            iteracao(p);
             break;
 
         case TK_IF:
-            c = decisao(p);
+            decisao(p);
             break;
 
         case TK_WRITE:
-            c = escrita(p);
+            escrita(p);
             break;
 
         default:
             erro(p, "Comando invalido");
     }
-    return c;
 }
 
-/* ATRIB: texto=variavel, f1=expressao */
-static Node *atribuicao(Parser *p) {
-    Node *a = ast_novo(NODE_ATRIB, p->token.lexema, p->token.linha);
+/* variavel := expressao ;
+   Verifica: variavel declarada e tipo compativel (integrante 4). */
+static void atribuicao(Parser *p) {
+    char nome[MAX_LEXEMA];
+    int linha = p->token.linha;
+    strcpy(nome, p->token.lexema);
 
     consumir(p, TK_IDENTIFICADOR, "Esperado identificador");
     consumir(p, TK_ATRIBUICAO, "Esperado ':='");
-    a->f1 = expr(p);
+    TipoDado t = expr(p);
     consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
-    return a;
+
+    sc_atribuicao(&p->ve, nome, t, linha);
 }
 
-/* IF: f1=condicao, f2=then, f3=else (ou NULL) */
-static Node *decisao(Parser *p) {
-    Node *d = ast_novo(NODE_IF, "", p->token.linha);
+/* if condicao then comando [else comando]
+   A condicao precisa ser boolean (integrante 4). */
+static void decisao(Parser *p) {
+    int linha = p->token.linha;
 
     consumir(p, TK_IF, "Esperado 'if'");
-    d->f1 = expr(p);
+    TipoDado cond = expr(p);
+    sc_condicao(cond, "if", linha);
     consumir(p, TK_THEN, "Esperado 'then'");
-    d->f2 = comando(p);
+    comando(p);
 
     if (p->token.tipo == TK_ELSE) {
         avancar(p);
-        d->f3 = comando(p);
+        comando(p);
     }
-    return d;
 }
 
-/* WHILE:  f1=condicao, f2=corpo
-   REPEAT: f1=corpo,    f2=condicao */
-static Node *iteracao(Parser *p) {
-    Node *n = NULL;
-
+/* while condicao do comando
+   repeat comando until condicao ;
+   A condicao precisa ser boolean (integrante 4). */
+static void iteracao(Parser *p) {
     if (p->token.tipo == TK_WHILE) {
-        n = ast_novo(NODE_WHILE, "", p->token.linha);
+        int linha = p->token.linha;
         avancar(p);
-        n->f1 = expr(p);
+        TipoDado cond = expr(p);
+        sc_condicao(cond, "while", linha);
         consumir(p, TK_DO, "Esperado 'do'");
-        n->f2 = comando(p);
+        comando(p);
 
     } else if (p->token.tipo == TK_REPEAT) {
-        n = ast_novo(NODE_REPEAT, "", p->token.linha);
         avancar(p);
-        n->f1 = comando(p);
+        comando(p);
+        int linha = p->token.linha;
         consumir(p, TK_UNTIL, "Esperado 'until'");
-        n->f2 = expr(p);
+        TipoDado cond = expr(p);
+        sc_condicao(cond, "repeat", linha);
         consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
 
     } else {
         erro(p, "Esperado 'while' ou 'repeat'");
     }
-    return n;
 }
 
-/* WRITE: f1=expressao */
-static Node *escrita(Parser *p) {
-    Node *w = ast_novo(NODE_WRITE, "", p->token.linha);
+static void escrita(Parser *p) {
+    int linha = p->token.linha;
 
     consumir(p, TK_WRITE, "Esperado 'write'");
     consumir(p, TK_ABRE_PAR, "Esperado '('");
-    w->f1 = expr(p);
+    TipoDado t = expr(p);
     consumir(p, TK_FECHA_PAR, "Esperado ')'");
     consumir(p, TK_PONTO_VIRGULA, "Esperado ';'");
-    return w;
+
+    sc_escrita(t, linha);
 }
 
-static Node *expr(Parser *p) {
+/* Expressoes: cada nivel devolve o TIPO do resultado, calculado pela
+   analise semantica das expressoes (integrante 3).
+   Cada nivel chama o de precedencia maior; o laco deixa a associatividade
+   a esquerda, como pede o enunciado. */
+
+static TipoDado expr(Parser *p) {
     return expr_logica(p);
 }
 
-/* Cada nivel abaixo chama o nivel de precedencia maior, entao quem esta mais
-   "fundo" na recursao fica mais perto das folhas e e avaliado primeiro.
-
-   BINARIA: texto=operador, f1=esquerda, f2=direita */
-
-/* Nivel 4 do enunciado: or e and tem a MESMA precedencia. */
-static Node *expr_logica(Parser *p) {
-    Node *esq = expr_relacional(p);
+/* Nivel 4: or e and tem a MESMA precedencia. */
+static TipoDado expr_logica(Parser *p) {
+    TipoDado esq = expr_relacional(p);
 
     while (p->token.tipo == TK_OR || p->token.tipo == TK_AND) {
-        Node *op = nova_binaria(p, esq);
-        op->f2 = expr_relacional(p);
-        esq = op;
+        TokenType op = p->token.tipo;
+        int linha = p->token.linha;
+        avancar(p);
+        TipoDado dir = expr_relacional(p);
+        esq = verificar_expressao_logica(esq, dir, op, linha);
     }
     return esq;
 }
 
 /* Nivel 3: =, <>, <, <=, >, >= */
-static Node *expr_relacional(Parser *p) {
-    Node *esq = expr_aditiva(p);
+static TipoDado expr_relacional(Parser *p) {
+    TipoDado esq = expr_aditiva(p);
 
     while (p->token.tipo == TK_IGUAL ||
            p->token.tipo == TK_DIFERENTE ||
@@ -259,95 +241,101 @@ static Node *expr_relacional(Parser *p) {
            p->token.tipo == TK_MAIOR ||
            p->token.tipo == TK_MAIOR_IGUAL) {
 
-        Node *op = nova_binaria(p, esq);
-        op->f2 = expr_aditiva(p);
-        esq = op;
+        TokenType op = p->token.tipo;
+        int linha = p->token.linha;
+        avancar(p);
+        TipoDado dir = expr_aditiva(p);
+        esq = verificar_expressao_relacional(esq, dir, op, linha);
     }
     return esq;
 }
 
 /* Nivel 2: +, - */
-static Node *expr_aditiva(Parser *p) {
-    Node *esq = expr_multiplicativa(p);
+static TipoDado expr_aditiva(Parser *p) {
+    TipoDado esq = expr_multiplicativa(p);
 
     while (p->token.tipo == TK_MAIS || p->token.tipo == TK_MENOS) {
-        Node *op = nova_binaria(p, esq);
-        op->f2 = expr_multiplicativa(p);
-        esq = op;
+        TokenType op = p->token.tipo;
+        int linha = p->token.linha;
+        avancar(p);
+        TipoDado dir = expr_multiplicativa(p);
+        esq = verificar_expressao_aritmetica(esq, dir, op, linha);
     }
     return esq;
 }
 
 /* Nivel 1: *, /, div */
-static Node *expr_multiplicativa(Parser *p) {
-    Node *esq = expr_basica(p);
+static TipoDado expr_multiplicativa(Parser *p) {
+    TipoDado esq = expr_basica(p);
 
     while (p->token.tipo == TK_MULT ||
            p->token.tipo == TK_BARRA ||
            p->token.tipo == TK_DIV) {
 
-        Node *op = nova_binaria(p, esq);
-        op->f2 = expr_basica(p);
-        esq = op;
+        TokenType op = p->token.tipo;
+        int linha = p->token.linha;
+        avancar(p);
+        TipoDado dir = expr_basica(p);
+        esq = verificar_expressao_aritmetica(esq, dir, op, linha);
     }
     return esq;
 }
 
 /* Literais, variaveis, parenteses e operadores unarios.
-   UNARIA: texto="-" ou "not", f1=operando.
-
-   O unario pega so a expressao basica seguinte, nao a expressao inteira:
+   O unario pega so a expressao basica seguinte:
    "not a and b" e (not a) and b, e "-a * b" e (-a) * b. */
-static Node *expr_basica(Parser *p) {
-    Node *n = NULL;
+static TipoDado expr_basica(Parser *p) {
+    TipoDado t = TIPO_ERRO;
+    int linha = p->token.linha;
 
     switch (p->token.tipo) {
-        case TK_IDENTIFICADOR:
-            n = ast_novo(NODE_VARIAVEL, p->token.lexema, p->token.linha);
+        case TK_IDENTIFICADOR: {
+            Simbolo *s = ve_usar(&p->ve, p->token.lexema, linha);
+            t = s ? s->tipo : TIPO_ERRO;
             avancar(p);
             break;
+        }
 
         case TK_INTEIRO_LITERAL:
-            n = ast_novo(NODE_INTEIRO, p->token.lexema, p->token.linha);
-            avancar(p);
-            break;
-
         case TK_REAL_LITERAL:
-            n = ast_novo(NODE_REAL, p->token.lexema, p->token.linha);
-            avancar(p);
-            break;
-
         case TK_CHAR_LITERAL:
-            n = ast_novo(NODE_CHAR, p->token.lexema, p->token.linha);
+            t = tipo_literal(p->token.tipo);
             avancar(p);
             break;
 
         case TK_ABRE_PAR:
             avancar(p);
-            n = expr(p);
+            t = expr(p);
             consumir(p, TK_FECHA_PAR, "Esperado ')'");
             break;
 
         case TK_NOT:
-        case TK_MENOS:
-            n = ast_novo(NODE_UNARIA, p->token.lexema, p->token.linha);
             avancar(p);
-            n->f1 = expr_basica(p);
+            t = verificar_not(expr_basica(p), linha);
+            break;
+
+        case TK_MENOS:
+            avancar(p);
+            t = verificar_menos_unario(expr_basica(p), linha);
             break;
 
         default:
             erro(p, "Expressao invalida");
     }
-    return n;
+    return t;
 }
 
 void parser_iniciar(Parser *p, Lexer *lx) {
     p->lx = lx;
+    ts_inicializar(&p->ts);
+    ve_inicializar(&p->ve, &p->ts);
+    se_zerar_erros();
+    sc_zerar_erros();
     avancar(p);
 }
 
-Node *parser_analisar(Parser *p) {
-    Node *raiz = programa(p);
+int parser_analisar(Parser *p) {
+    programa(p);
     if (p->token.tipo != TK_EOF) erro(p, "Codigo apos fim do programa");
-    return raiz;
+    return ve_total_erros(&p->ve) + se_total_erros() + sc_total_erros();
 }

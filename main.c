@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include "parser.h"
-#include "ast.h"
 
 int main(int argc, char *argv[]) {
 
@@ -21,13 +20,18 @@ int main(int argc, char *argv[]) {
     Parser parser;
     parser_iniciar(&parser, &lx);
 
-    Node *raiz = parser_analisar(&parser);
+    /* Erros lexicos e sintaticos encerram o programa dentro do parser.
+       Se chegou aqui, a sintaxe esta correta; falta ver a semantica. */
+    int erros = parser_analisar(&parser);
 
-    printf("Programa sintaticamente correto!\n");
-    ast_imprimir(raiz, 0);
-
-    ast_liberar(raiz);
     lexer_liberar(&lx);
 
+    fflush(stderr);
+    if (erros > 0) {
+        printf("Programa com %d erro(s) semantico(s).\n", erros);
+        return 1;
+    }
+
+    printf("Programa correto: sem erros lexicos, sintaticos ou semanticos.\n");
     return 0;
 }

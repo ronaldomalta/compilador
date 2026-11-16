@@ -71,8 +71,12 @@ TipoDado verificar_expressao_aritmetica(
         return incompativel(esq, dir, op, linha);
     }
 
-    if (op == TK_BARRA)
+    if (op == TK_BARRA) {
+    if (esq == TIPO_REAL && dir == TIPO_REAL)
         return TIPO_REAL;
+
+    return incompativel(esq, dir, op, linha);
+}
 
     if (op == TK_MAIS || op == TK_MENOS || op == TK_MULT) {
         if (esq == dir && numerico(esq))

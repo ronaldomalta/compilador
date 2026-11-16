@@ -46,8 +46,7 @@ static void programa(Parser *p) {
     consumir(p, TK_PONTO, "Esperado '.' no fim");
 }
 
-/* Guarda os nomes de "a, b, c" ate ler o tipo, e so entao declara cada um.
-   A redeclaracao e detectada pelo verificador de escopo (integrante 2). */
+
 #define MAX_GRUPO 64
 
 static void decl_var(Parser *p) {
@@ -137,8 +136,7 @@ static void comando(Parser *p) {
     }
 }
 
-/* variavel := expressao ;
-   Verifica: variavel declarada e tipo compativel (integrante 4). */
+
 static void atribuicao(Parser *p) {
     char nome[MAX_LEXEMA];
     int linha = p->token.linha;
@@ -152,8 +150,7 @@ static void atribuicao(Parser *p) {
     sc_atribuicao(&p->ve, nome, t, linha);
 }
 
-/* if condicao then comando [else comando]
-   A condicao precisa ser boolean (integrante 4). */
+
 static void decisao(Parser *p) {
     int linha = p->token.linha;
 
@@ -169,9 +166,7 @@ static void decisao(Parser *p) {
     }
 }
 
-/* while condicao do comando
-   repeat comando until condicao ;
-   A condicao precisa ser boolean (integrante 4). */
+
 static void iteracao(Parser *p) {
     if (p->token.tipo == TK_WHILE) {
         int linha = p->token.linha;
@@ -207,16 +202,13 @@ static void escrita(Parser *p) {
     sc_escrita(t, linha);
 }
 
-/* Expressoes: cada nivel devolve o TIPO do resultado, calculado pela
-   analise semantica das expressoes (integrante 3).
-   Cada nivel chama o de precedencia maior; o laco deixa a associatividade
-   a esquerda, como pede o enunciado. */
+
 
 static TipoDado expr(Parser *p) {
     return expr_logica(p);
 }
 
-/* Nivel 4: or e and tem a MESMA precedencia. */
+
 static TipoDado expr_logica(Parser *p) {
     TipoDado esq = expr_relacional(p);
 
@@ -230,7 +222,7 @@ static TipoDado expr_logica(Parser *p) {
     return esq;
 }
 
-/* Nivel 3: =, <>, <, <=, >, >= */
+
 static TipoDado expr_relacional(Parser *p) {
     TipoDado esq = expr_aditiva(p);
 
@@ -250,7 +242,7 @@ static TipoDado expr_relacional(Parser *p) {
     return esq;
 }
 
-/* Nivel 2: +, - */
+
 static TipoDado expr_aditiva(Parser *p) {
     TipoDado esq = expr_multiplicativa(p);
 
@@ -264,7 +256,7 @@ static TipoDado expr_aditiva(Parser *p) {
     return esq;
 }
 
-/* Nivel 1: *, /, div */
+
 static TipoDado expr_multiplicativa(Parser *p) {
     TipoDado esq = expr_basica(p);
 
@@ -281,9 +273,7 @@ static TipoDado expr_multiplicativa(Parser *p) {
     return esq;
 }
 
-/* Literais, variaveis, parenteses e operadores unarios.
-   O unario pega so a expressao basica seguinte:
-   "not a and b" e (not a) and b, e "-a * b" e (-a) * b. */
+
 static TipoDado expr_basica(Parser *p) {
     TipoDado t = TIPO_ERRO;
     int linha = p->token.linha;

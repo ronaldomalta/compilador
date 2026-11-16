@@ -1,0 +1,4 @@
+Erro semantico [Linha 6]: Atribuicao incompativel: 'x' e integer, mas a expressao e real.
+Erro semantico [Linha 7]: Atribuicao incompativel: 'y' e real, mas a expressao e integer.
+Erro semantico [Linha 8]: Variavel 'z' nao declarada.
+Programa com 3 erro(s) semantico(s).

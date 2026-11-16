@@ -93,17 +93,35 @@ TipoDado verificar_expressao_aritmetica(
 }
 
 
-TipoDado verificar_expressao_relacional(TipoDado esq, TipoDado dir, TokenType op, int linha) {
-    if (esq == TIPO_ERRO || dir == TIPO_ERRO) return TIPO_ERRO;
 
-    if (numerico(esq) && numerico(dir)) return TIPO_BOOLEAN;
-    if (esq == TIPO_CHAR && dir == TIPO_CHAR) return TIPO_BOOLEAN;
-    if (esq == TIPO_BOOLEAN && dir == TIPO_BOOLEAN &&
-        (op == TK_IGUAL || op == TK_DIFERENTE))
-        return TIPO_BOOLEAN;
+TipoDado verificar_expressao_relacional(
+    TipoDado esq,
+    TipoDado dir,
+    TokenType op,
+    int linha
+) {
+    if (esq == TIPO_ERRO || dir == TIPO_ERRO)
+        return TIPO_ERRO;
+
+    if (op == TK_IGUAL || op == TK_DIFERENTE) {
+        if (esq == dir)
+            return TIPO_BOOLEAN;
+
+        return incompativel(esq, dir, op, linha);
+    }
+
+    if (op == TK_MENOR || op == TK_MENOR_IGUAL ||
+        op == TK_MAIOR || op == TK_MAIOR_IGUAL) {
+
+        if (esq == dir && numerico(esq))
+            return TIPO_BOOLEAN;
+
+        return incompativel(esq, dir, op, linha);
+    }
 
     return incompativel(esq, dir, op, linha);
 }
+
 
 TipoDado verificar_expressao_logica(TipoDado esq, TipoDado dir, TokenType op, int linha) {
     if (esq == TIPO_ERRO || dir == TIPO_ERRO) return TIPO_ERRO;

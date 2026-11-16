@@ -2,26 +2,6 @@
 #include <stdarg.h>
 #include "analise_semantica.h"
 
-/* Regras de tipos das expressoes:
-
-   Aritmeticas
-     + - *    integer com integer -> integer
-              integer/real com real -> real
-     /        dois numericos -> real (em Pascal a barra sempre da real)
-     div      so integer com integer -> integer
-     char ou boolean em operacao aritmetica -> erro
-
-   Relacionais (= <> < <= > >=) -> boolean
-     numerico com numerico (integer e real podem se misturar)
-     char com char
-     boolean com boolean, so com = e <>
-
-   Logicas
-     and, or  boolean com boolean -> boolean
-     not      boolean -> boolean
-
-   Menos unario
-     integer -> integer, real -> real; qualquer outro tipo -> erro */
 
 static int erros = 0;
 
@@ -74,22 +54,40 @@ TipoDado tipo_literal(TokenType tk) {
     }
 }
 
-TipoDado verificar_expressao_aritmetica(TipoDado esq, TipoDado dir, TokenType op, int linha) {
-    if (esq == TIPO_ERRO || dir == TIPO_ERRO) return TIPO_ERRO;
 
-    if (!numerico(esq) || !numerico(dir))
-        return incompativel(esq, dir, op, linha);
+TipoDado verificar_expressao_aritmetica(
+    TipoDado esq,
+    TipoDado dir,
+    TokenType op,
+    int linha
+) {
+    if (esq == TIPO_ERRO || dir == TIPO_ERRO)
+        return TIPO_ERRO;
 
     if (op == TK_DIV) {
-        if (esq == TIPO_INTEGER && dir == TIPO_INTEGER) return TIPO_INTEGER;
+        if (esq == TIPO_INTEGER && dir == TIPO_INTEGER)
+            return TIPO_INTEGER;
+
         return incompativel(esq, dir, op, linha);
     }
 
-    if (op == TK_BARRA) return TIPO_REAL;
+    if (op == TK_BARRA)
+        return TIPO_REAL;
 
-    if (esq == TIPO_INTEGER && dir == TIPO_INTEGER) return TIPO_INTEGER;
-    return TIPO_REAL;
+    if (op == TK_MAIS || op == TK_MENOS || op == TK_MULT) {
+        if (esq == dir && numerico(esq))
+            return esq;
+
+        if ((op == TK_MAIS || op == TK_MENOS) &&
+            esq == TIPO_CHAR && dir == TIPO_INTEGER)
+            return TIPO_CHAR;
+
+        return incompativel(esq, dir, op, linha);
+    }
+
+    return incompativel(esq, dir, op, linha);
 }
+
 
 TipoDado verificar_expressao_relacional(TipoDado esq, TipoDado dir, TokenType op, int linha) {
     if (esq == TIPO_ERRO || dir == TIPO_ERRO) return TIPO_ERRO;
